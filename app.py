@@ -43,8 +43,67 @@ with st.sidebar:
         )
     else:
         # Local Discovery
-        default_dir = os.getcwd()
-        directory_path = st.text_input("Directory Path", value=default_dir)
+        if 'current_path' not in st.session_state:
+            st.session_state.current_path = os.getcwd()
+            
+        # Helper to get drives
+        def get_drives():
+            import string
+            drives = []
+            for letter in string.ascii_uppercase:
+                drive = f"{letter}:\\"
+                if os.path.exists(drive):
+                    drives.append(drive)
+            return drives
+
+        # Drive Selector
+        drives = get_drives()
+        if drives:
+            current_drive = os.path.splitdrive(st.session_state.current_path)[0] + "\\"
+            # Handle case where current path isn't in a standard drive (e.g. UNC path, though unlikely here)
+            if current_drive not in drives and drives: 
+                 current_drive = drives[0] # Default fallback
+            
+            # Find index safely
+            try:
+                drive_index = drives.index(current_drive)
+            except ValueError:
+                drive_index = 0
+                
+            selected_drive = st.selectbox("Select Drive", drives, index=drive_index, key="drive_selector")
+            
+            # Update path if drive changes
+            if selected_drive != current_drive:
+                st.session_state.current_path = selected_drive
+                st.rerun()
+
+        # Navigation Controls
+        col_nav1, col_nav2 = st.columns([1, 4])
+        with col_nav1:
+            if st.button("⬆️ Up"):
+                parent = os.path.dirname(st.session_state.current_path)
+                if parent and parent != st.session_state.current_path:
+                    st.session_state.current_path = parent
+                    st.rerun()
+        with col_nav2:
+             st.text_input("Current Path", value=st.session_state.current_path, key="path_display", disabled=True)
+
+        # Folder Navigation
+        try:
+            subdirs = ["Select Folder..."] + [d for d in os.listdir(st.session_state.current_path) 
+                       if os.path.isdir(os.path.join(st.session_state.current_path, d))]
+            
+            selected_subdir = st.selectbox("Navigate to...", subdirs, key="subdir_selector")
+            
+            if selected_subdir != "Select Folder...":
+                st.session_state.current_path = os.path.join(st.session_state.current_path, selected_subdir)
+                st.rerun()
+                
+        except Exception as e:
+            st.error(f"Error reading directory: {e}")
+
+        # Scan for supported files in the current path
+        directory_path = st.session_state.current_path # Use the session state path
         
         if os.path.isdir(directory_path):
             # Scan for supported files
