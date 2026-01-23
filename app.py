@@ -22,16 +22,50 @@ ALL_SUPPORTED = SUPPORTED_VIDEO + SUPPORTED_AUDIO + SUPPORTED_IMAGE
 
 # Sidebar for file upload
 with st.sidebar:
-    st.header("📁 Upload Media")
+    st.header("📁 Media Source")
     
-    # File uploader
-    uploaded_files = st.file_uploader(
-        "Choose media files",
-        type=[ext[1:] for ext in ALL_SUPPORTED],  # Remove the dot
-        accept_multiple_files=True,
-        help="Upload video, audio, or image files"
+    input_method = st.radio(
+        "Choose input method",
+        ["File Upload", "Local Directory"],
+        help="Use 'Local Directory' to stream large files without uploading"
     )
     
+    selected_file_path = None
+    uploaded_files = []
+
+    if input_method == "File Upload":
+        # File uploader
+        uploaded_files = st.file_uploader(
+            "Choose media files",
+            type=[ext[1:] for ext in ALL_SUPPORTED],  # Remove the dot
+            accept_multiple_files=True,
+            help="Upload video, audio, or image files"
+        )
+    else:
+        # Local Discovery
+        default_dir = os.getcwd()
+        directory_path = st.text_input("Directory Path", value=default_dir)
+        
+        if os.path.isdir(directory_path):
+            # Scan for supported files
+            all_files = []
+            try:
+                for f in os.listdir(directory_path):
+                    f_path = Path(directory_path) / f
+                    if f_path.is_file() and f_path.suffix.lower() in ALL_SUPPORTED:
+                        all_files.append(f)
+                
+                if all_files:
+                    selected_filename = st.selectbox("Select File", all_files)
+                    if selected_filename:
+                        selected_file_path = Path(directory_path) / selected_filename
+                else:
+                    st.warning("No supported media files found in this directory")
+            except Exception as e:
+                st.error(f"Error reading directory: {e}")
+        else:
+            st.error("Invalid directory path")
+
     st.markdown("---")
     st.markdown("### Supported Formats")
     st.markdown("**Video:** MP4, WebM, OGG, MOV, AVI")
@@ -39,7 +73,7 @@ with st.sidebar:
     st.markdown("**Image:** JPG, PNG, GIF, BMP, WebP")
 
 # Main content area
-if uploaded_files:
+if input_method == "File Upload" and uploaded_files:
     st.success(f"✅ {len(uploaded_files)} file(s) loaded")
     
     # Create tabs for different media types
@@ -81,9 +115,41 @@ if uploaded_files:
                 mime=uploaded_file.type
             )
 
+elif input_method == "Local Directory" and selected_file_path:
+    st.success(f"✅ Loaded: {selected_file_path.name}")
+    
+    file_extension = selected_file_path.suffix.lower()
+    
+    # Display file info
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("File Name", selected_file_path.name)
+    with col2:
+        size_mb = selected_file_path.stat().st_size / (1024 * 1024)
+        st.metric("Size", f"{size_mb:.2f} MB")
+    with col3:
+        media_type = "Video" if file_extension in SUPPORTED_VIDEO else \
+                    "Audio" if file_extension in SUPPORTED_AUDIO else "Image"
+        st.metric("Type", media_type)
+    
+    st.markdown("---")
+    
+    # Display media using direct path
+    try:
+        if file_extension in SUPPORTED_VIDEO:
+            st.video(str(selected_file_path))
+            
+        elif file_extension in SUPPORTED_AUDIO:
+            st.audio(str(selected_file_path))
+            
+        elif file_extension in SUPPORTED_IMAGE:
+            st.image(str(selected_file_path), use_container_width=True)
+    except Exception as e:
+        st.error(f"Error loading media: {e}")
+
 else:
-    # Welcome message when no files are uploaded
-    st.info("👈 Upload media files using the sidebar to get started")
+    # Welcome message when no files are uploaded/selected
+    st.info("👈 Choose a file source in the sidebar to get started")
     
     col1, col2, col3 = st.columns(3)
     
