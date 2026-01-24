@@ -11,6 +11,17 @@ A simple and elegant Streamlit web application for playing local media files dir
 - **Download Option**: Download any uploaded file directly from the player
 - **Responsive Design**: Clean, modern interface that works on desktop and mobile
 
+## 📸 Screenshots
+
+### Main Interface (Upload and play maximum 200MB)
+![Main Interface](docs/images/main-interface.png)
+
+### Local Directory Mode (Play files from local directory - no upload required)
+![Local Directory](docs/images/local-directory.png)
+
+### Web Media Mode (Play media from the web - no upload required)
+![Web Media](docs/images/web-media.png)
+
 ## 🚀 Getting Started
 
 ### Prerequisites
