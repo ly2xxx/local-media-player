@@ -52,9 +52,9 @@ st.markdown("Upload and play your local media files (videos, audio, images) dire
 
 # Initialize input handlers
 input_handlers = {
-    "File Upload": FileUploadInput(),
     "Local Directory": LocalDirectoryInput(),
-    "Web Media": WebMediaInput()
+    "Web Media": WebMediaInput(),
+    "File Upload": FileUploadInput()
 }
 
 # Sidebar for file upload
@@ -83,6 +83,7 @@ with st.sidebar:
     st.markdown("**Video:** MP4, WebM, OGG, MOV, AVI")
     st.markdown("**Audio:** MP3, WAV, OGG, M4A, FLAC")
     st.markdown("**Image:** JPG, PNG, GIF, BMP, WebP")
+    st.markdown("**Document:** PDF, MD, TXT")
 
 
 # Function to render file browser

@@ -10,7 +10,8 @@ class MediaInputHandler(ABC):
     SUPPORTED_VIDEO = ['.mp4', '.webm', '.ogg', '.mov', '.avi']
     SUPPORTED_AUDIO = ['.mp3', '.wav', '.ogg', '.m4a', '.flac']
     SUPPORTED_IMAGE = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
-    ALL_SUPPORTED = SUPPORTED_VIDEO + SUPPORTED_AUDIO + SUPPORTED_IMAGE
+    SUPPORTED_DOCUMENT = ['.pdf', '.md', '.txt']
+    ALL_SUPPORTED = SUPPORTED_VIDEO + SUPPORTED_AUDIO + SUPPORTED_IMAGE + SUPPORTED_DOCUMENT
 
     def __init__(self):
         """Initialize the handler."""
@@ -54,4 +55,6 @@ class MediaInputHandler(ABC):
             return "Audio"
         elif ext in MediaInputHandler.SUPPORTED_IMAGE:
             return "Image"
+        elif ext in MediaInputHandler.SUPPORTED_DOCUMENT:
+            return "Document"
         return "Unknown"
