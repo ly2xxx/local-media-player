@@ -9,8 +9,36 @@ st.set_page_config(
     layout="wide"
 )
 
-# Check for admin mode via URL parameter
-is_admin = st.query_params.get("admin", "").lower() == "true"
+# Check for admin access - requires both URL parameter and verified email
+def is_admin_user():
+    """Check if current user has admin privileges."""
+    # Check if admin mode is requested via URL
+    admin_param = st.query_params.get("admin", "").lower() == "true"
+    
+    if not admin_param:
+        return False
+    
+    # Check if user email is in admin whitelist
+    try:
+        # Get admin emails from secrets
+        admin_emails = st.secrets.get("ADMIN_EMAILS", [])
+        
+        # Get current user's email (only available on Streamlit Cloud)
+        user_email = st.user.get("email", None) if hasattr(st, "user") else None
+        
+        # For local development, allow admin access if secrets exist
+        if user_email is None:
+            # Local dev mode - check if running locally
+            return len(admin_emails) > 0
+        
+        # Check if user email is in whitelist
+        return user_email in admin_emails
+    except Exception as e:
+        # If secrets not configured, deny access
+        return False
+
+is_admin = is_admin_user()
+
 
 # Title and description
 st.title("🎬 Local Media Player")

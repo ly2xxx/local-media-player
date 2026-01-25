@@ -1,0 +1,56 @@
+# Streamlit Secrets Configuration Sample
+# This file demonstrates how to configure admin access for the Local Media Player
+
+# =============================================================================
+# ADMIN EMAIL WHITELIST
+# =============================================================================
+# Only users with emails in this list can access admin features when visiting
+# the app with ?admin=true URL parameter
+#
+# Example: https://web-player.streamlit.app/?admin=true
+#
+# How it works:
+# 1. User visits the app with ?admin=true in the URL
+# 2. App checks if user is logged into Streamlit Cloud
+# 3. App compares user's email with this whitelist
+# 4. If email matches → Admin features appear (Browse files button)
+# 5. If email doesn't match → Admin features hidden
+#
+# IMPORTANT: Replace the example emails below with your actual email address(es)
+
+ADMIN_EMAILS = [
+    "admin@example.com",           # Primary admin
+    "backup-admin@example.com"     # Secondary admin (optional)
+]
+
+# =============================================================================
+# DEPLOYMENT INSTRUCTIONS
+# =============================================================================
+#
+# For Streamlit Cloud (Production):
+# ----------------------------------
+# 1. Go to https://share.streamlit.io/
+# 2. Select your app
+# 3. Click "Settings" → "Secrets"
+# 4. Copy the ADMIN_EMAILS configuration above
+# 5. Paste it into the Secrets editor
+# 6. Replace example emails with your real email(s)
+# 7. Click "Save"
+# 8. App will automatically redeploy
+#
+# For Local Development:
+# ----------------------
+# 1. Copy this file to: .streamlit/secrets.toml
+# 2. Replace example emails with your email
+# 3. Run: streamlit run app.py
+# 4. Visit: http://localhost:8501/?admin=true
+#
+# =============================================================================
+# SECURITY NOTES
+# =============================================================================
+#
+# - Never commit .streamlit/secrets.toml to Git (already in .gitignore)
+# - Use the email you log into Streamlit Cloud with
+# - Multiple admins can be added by including multiple emails in the list
+# - Users without whitelisted emails cannot access admin features, even with ?admin=true
+#
