@@ -1,11 +1,53 @@
 """File upload input handler."""
 import streamlit as st
+import os
 from pathlib import Path
+from datetime import datetime
 from .base import MediaInputHandler
+
+# Directory for cloud uploads
+CLOUD_UPLOADS_DIR = Path(__file__).parent.parent / "cloud_uploads"
 
 
 class FileUploadInput(MediaInputHandler):
     """Handler for uploaded media files."""
+
+    def __init__(self):
+        """Initialize the handler and ensure upload directory exists."""
+        super().__init__()
+        CLOUD_UPLOADS_DIR.mkdir(exist_ok=True)
+        # Initialize session state for tracking uploads
+        if "cloud_files" not in st.session_state:
+            st.session_state.cloud_files = {}
+            # Load existing files from directory
+            self._load_existing_files()
+
+    def _load_existing_files(self):
+        """Load existing files from cloud_uploads directory."""
+        if CLOUD_UPLOADS_DIR.exists():
+            for file_path in CLOUD_UPLOADS_DIR.iterdir():
+                if file_path.is_file():
+                    stat = file_path.stat()
+                    st.session_state.cloud_files[file_path.name] = {
+                        "path": str(file_path),
+                        "size": stat.st_size,
+                        "uploaded_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                        "type": self.get_media_type(file_path.suffix)
+                    }
+
+    def _save_to_cloud(self, uploaded_file):
+        """Save uploaded file to cloud storage directory."""
+        file_path = CLOUD_UPLOADS_DIR / uploaded_file.name
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        
+        # Track in session state
+        st.session_state.cloud_files[uploaded_file.name] = {
+            "path": str(file_path),
+            "size": uploaded_file.size,
+            "uploaded_at": datetime.now().isoformat(),
+            "type": self.get_media_type(Path(uploaded_file.name).suffix)
+        }
 
     def render_sidebar(self):
         """Render file upload controls in sidebar.
@@ -19,6 +61,13 @@ class FileUploadInput(MediaInputHandler):
             accept_multiple_files=True,
             help="Upload video, audio, or image files"
         )
+        
+        # Save uploaded files to cloud storage
+        if uploaded_files:
+            for uploaded_file in uploaded_files:
+                if uploaded_file.name not in st.session_state.cloud_files:
+                    self._save_to_cloud(uploaded_file)
+        
         return uploaded_files if uploaded_files else []
 
     def render_main_content(self, uploaded_files):

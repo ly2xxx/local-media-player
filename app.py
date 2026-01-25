@@ -1,4 +1,5 @@
 import streamlit as st
+from pathlib import Path
 from inputs import FileUploadInput, LocalDirectoryInput, WebMediaInput
 
 # Page configuration
@@ -7,6 +8,9 @@ st.set_page_config(
     page_icon="🎬",
     layout="wide"
 )
+
+# Check for admin mode via URL parameter
+is_admin = st.query_params.get("admin", "").lower() == "true"
 
 # Title and description
 st.title("🎬 Local Media Player")
@@ -33,14 +37,77 @@ with st.sidebar:
     handler = input_handlers[input_method]
     data = handler.render_sidebar()
 
+    # Admin-only: Browse uploaded files button
+    if is_admin:
+        st.markdown("---")
+        st.markdown("### 📂 Admin")
+        if st.button("Browse files", use_container_width=True):
+            st.session_state.show_file_browser = True
+
     st.markdown("---")
     st.markdown("### Supported Formats")
     st.markdown("**Video:** MP4, WebM, OGG, MOV, AVI")
     st.markdown("**Audio:** MP3, WAV, OGG, M4A, FLAC")
     st.markdown("**Image:** JPG, PNG, GIF, BMP, WebP")
 
+
+# Function to render file browser
+def render_file_browser():
+    """Render the admin file browser UI."""
+    st.subheader("📂 Uploaded Files")
+    
+    cloud_files = st.session_state.get("cloud_files", {})
+    
+    if not cloud_files:
+        st.info("No files uploaded yet.")
+        return
+    
+    st.success(f"📁 {len(cloud_files)} file(s) available")
+    
+    for filename, file_info in cloud_files.items():
+        with st.expander(f"📄 {filename}", expanded=False):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                size_mb = file_info["size"] / (1024 * 1024)
+                st.metric("Size", f"{size_mb:.2f} MB")
+            with col2:
+                st.metric("Type", file_info["type"])
+            with col3:
+                uploaded_at = file_info.get("uploaded_at", "Unknown")
+                if uploaded_at != "Unknown":
+                    # Format datetime nicely
+                    uploaded_at = uploaded_at.split("T")[0]
+                st.metric("Uploaded", uploaded_at)
+            
+            # Preview based on file type
+            file_path = Path(file_info["path"])
+            if file_path.exists():
+                file_ext = file_path.suffix.lower()
+                
+                if file_ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']:
+                    st.image(str(file_path), use_container_width=True)
+                elif file_ext in ['.mp4', '.webm', '.ogg']:
+                    st.video(str(file_path))
+                elif file_ext in ['.mp3', '.wav', '.m4a', '.flac']:
+                    st.audio(str(file_path))
+                
+                # Download button
+                with open(file_path, "rb") as f:
+                    st.download_button(
+                        label="⬇️ Download",
+                        data=f.read(),
+                        file_name=filename,
+                        use_container_width=True
+                    )
+
+
 # Main content area
-if data:
+if st.session_state.get("show_file_browser") and is_admin:
+    render_file_browser()
+    if st.button("← Back to Media Player"):
+        st.session_state.show_file_browser = False
+        st.rerun()
+elif data:
     handler.render_main_content(data)
 else:
     # Welcome message when no files are uploaded/selected
@@ -68,3 +135,4 @@ st.markdown(
     "</div>",
     unsafe_allow_html=True
 )
+
