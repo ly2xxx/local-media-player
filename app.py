@@ -11,65 +11,50 @@ st.set_page_config(
 
 import os
 
-# Check for admin access - requires both URL parameter and verified email
+# Check for admin access - STRICT: requires verified email match
 def is_admin_user():
-    """Check if current user has admin privileges."""
+    """Check if current user has admin privileges.
+    
+    Strict mode: Only allows access when email is verified.
+    - Admin URL param required
+    - User must be logged in (st.user.email available)
+    - User email must be in ADMIN_EMAILS whitelist
+    """
     # Check if admin mode is requested via URL
     admin_param = st.query_params.get("admin", "").lower() == "true"
     
     if not admin_param:
         return False
     
-    # Check if user email is in admin whitelist
     try:
         # Get admin emails from secrets
-        # Support both a single string or a list
         admin_emails_raw = st.secrets.get("ADMIN_EMAILS", [])
         if isinstance(admin_emails_raw, str):
             admin_emails = [email.strip().lower() for email in admin_emails_raw.split(",")]
         else:
             admin_emails = [email.strip().lower() for email in admin_emails_raw]
-            
+        
         if not admin_emails:
-            if admin_param:
-                st.sidebar.error("⚠️ admin_emails not found in secrets")
             return False
         
-        # Get current user info from Streamlit Cloud
+        # Get current user email - this is the ONLY way to verify identity
         user_email = None
         if hasattr(st, "user") and st.user:
             user_email = getattr(st.user, "email", None)
-            
-        # Normalize current user email
-        if user_email:
-            user_email = user_email.strip().lower()
-            
-        # If we have an email, it must be in the whitelist
-        if user_email:
-            if user_email in admin_emails:
-                return True
-            else:
-                st.sidebar.warning(f"🚫 Email '{user_email}' not in whitelist")
-                return False
-            
-        # If no email is available (user not logged in to Streamlit app)
-        is_on_cloud = os.environ.get("STREAMLIT_SERVER_ADDRESS") is not None or \
-                      os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud"
         
-        if is_on_cloud:
-            # On Cloud, if not logged in, we can't verify identity
-            st.sidebar.info("ℹ️ Please log in to Streamlit Cloud to verify admin access.")
+        # STRICT: No email = no access (no fallbacks)
+        if not user_email:
             return False
-            
-        # For local development (where st.user.email is always None)
-        return True
-    except Exception as e:
-        # If any error, deny access
-        if admin_param:
-            st.sidebar.error(f"❌ Auth Error: {str(e)}")
+        
+        # Normalize and check whitelist
+        user_email = user_email.strip().lower()
+        return user_email in admin_emails
+        
+    except Exception:
         return False
 
 is_admin = is_admin_user()
+
 
 
 
