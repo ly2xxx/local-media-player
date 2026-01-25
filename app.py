@@ -23,38 +23,54 @@ def is_admin_user():
     # Check if user email is in admin whitelist
     try:
         # Get admin emails from secrets
-        admin_emails = st.secrets.get("ADMIN_EMAILS", [])
+        # Support both a single string or a list
+        admin_emails_raw = st.secrets.get("ADMIN_EMAILS", [])
+        if isinstance(admin_emails_raw, str):
+            admin_emails = [email.strip().lower() for email in admin_emails_raw.split(",")]
+        else:
+            admin_emails = [email.strip().lower() for email in admin_emails_raw]
+            
         if not admin_emails:
+            if admin_param:
+                st.sidebar.error("⚠️ admin_emails not found in secrets")
             return False
         
-        # Get current user info
-        # Note: st.user is available in recent Streamlit versions
+        # Get current user info from Streamlit Cloud
         user_email = None
-        if hasattr(st, "user"):
-            user_email = st.user.email
+        if hasattr(st, "user") and st.user:
+            user_email = getattr(st.user, "email", None)
+            
+        # Normalize current user email
+        if user_email:
+            user_email = user_email.strip().lower()
             
         # If we have an email, it must be in the whitelist
         if user_email:
-            return user_email in admin_emails
+            if user_email in admin_emails:
+                return True
+            else:
+                st.sidebar.warning(f"🚫 Email '{user_email}' not in whitelist")
+                return False
             
-        # If no email is available (user not logged in)
-        # We must check if we are on Streamlit Cloud or Local
-        # Streamlit Cloud sets STREAMLIT_SERVER_ADDRESS
+        # If no email is available (user not logged in to Streamlit app)
         is_on_cloud = os.environ.get("STREAMLIT_SERVER_ADDRESS") is not None or \
                       os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud"
         
         if is_on_cloud:
-            # On Cloud, if not logged in, deny access
+            # On Cloud, if not logged in, we can't verify identity
+            st.sidebar.info("ℹ️ Please log in to Streamlit Cloud to verify admin access.")
             return False
             
         # For local development (where st.user.email is always None)
-        # allow access if admin_emails is configured locally in secrets.toml
         return True
     except Exception as e:
-        # If any error (like secrets missing), deny access
+        # If any error, deny access
+        if admin_param:
+            st.sidebar.error(f"❌ Auth Error: {str(e)}")
         return False
 
 is_admin = is_admin_user()
+
 
 
 
