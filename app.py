@@ -11,49 +11,36 @@ st.set_page_config(
 
 import os
 
-# Check for admin access - STRICT: requires verified email match
+# Check for admin access using secret token
 def is_admin_user():
     """Check if current user has admin privileges.
     
-    Strict mode: Only allows access when email is verified.
-    - Admin URL param required
-    - User must be logged in (st.user.email available)
-    - User email must be in ADMIN_EMAILS whitelist
+    Uses a secret token approach:
+    - Admin visits: ?admin=YOUR_SECRET_TOKEN
+    - Token must match ADMIN_TOKEN in secrets.toml
+    - Anyone without the secret token cannot access
     """
-    # Check if admin mode is requested via URL
-    admin_param = st.query_params.get("admin", "").lower() == "true"
+    # Get the admin param from URL
+    admin_param = st.query_params.get("admin", "")
     
     if not admin_param:
         return False
     
     try:
-        # Get admin emails from secrets
-        admin_emails_raw = st.secrets.get("ADMIN_EMAILS", [])
-        if isinstance(admin_emails_raw, str):
-            admin_emails = [email.strip().lower() for email in admin_emails_raw.split(",")]
-        else:
-            admin_emails = [email.strip().lower() for email in admin_emails_raw]
+        # Get secret token from secrets
+        admin_token = st.secrets.get("ADMIN_TOKEN", "")
         
-        if not admin_emails:
+        if not admin_token:
             return False
         
-        # Get current user email - this is the ONLY way to verify identity
-        user_email = None
-        if hasattr(st, "user") and st.user:
-            user_email = getattr(st.user, "email", None)
-        
-        # STRICT: No email = no access (no fallbacks)
-        if not user_email:
-            return False
-        
-        # Normalize and check whitelist
-        user_email = user_email.strip().lower()
-        return user_email in admin_emails
+        # Check if URL token matches secret token
+        return admin_param == admin_token
         
     except Exception:
         return False
 
 is_admin = is_admin_user()
+
 
 
 
