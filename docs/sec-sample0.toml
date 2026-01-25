@@ -36,3 +36,8 @@ ADMIN_TOKEN = "xK7mN3pQ9vR2sT5wY8zA1bC4dE6fG0hJ"
 # 1. Copy this to: .streamlit/secrets.toml
 # 2. Run: streamlit run app.py
 # 3. Visit: http://localhost:8501/?admin=xK7mN3pQ9vR2sT5wY8zA1bC4dE6fG0hJ
+
+replace ADMIN_EMAILS = [
+    "admin@test.com",           # Primary admin
+    "backup-admin@example.com"     # Secondary admin(optional)
+]
