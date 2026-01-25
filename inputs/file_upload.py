@@ -111,6 +111,23 @@ class FileUploadInput(MediaInputHandler):
                 elif file_extension in self.SUPPORTED_IMAGE:
                     st.image(uploaded_file, use_container_width=True)
 
+                elif file_extension in self.SUPPORTED_DOCUMENT:
+                    if file_extension == '.pdf':
+                        # Display PDF using base64 embed
+                        import base64
+                        base64_pdf = base64.b64encode(uploaded_file.read()).decode('utf-8')
+                        pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf"></iframe>'
+                        st.markdown(pdf_display, unsafe_allow_html=True)
+                        uploaded_file.seek(0)  # Reset file pointer for download
+                    else:
+                        # Display text content for .md and .txt
+                        content = uploaded_file.read().decode('utf-8')
+                        if file_extension == '.md':
+                            st.markdown(content)
+                        else:
+                            st.text(content)
+                        uploaded_file.seek(0)  # Reset file pointer for download
+
                 # Download button
                 st.download_button(
                     label="⬇️ Download",
