@@ -9,6 +9,8 @@ st.set_page_config(
     layout="wide"
 )
 
+import os
+
 # Check for admin access - requires both URL parameter and verified email
 def is_admin_user():
     """Check if current user has admin privileges."""
@@ -22,22 +24,38 @@ def is_admin_user():
     try:
         # Get admin emails from secrets
         admin_emails = st.secrets.get("ADMIN_EMAILS", [])
+        if not admin_emails:
+            return False
         
-        # Get current user's email (only available on Streamlit Cloud)
-        user_email = st.user.get("email", None) if hasattr(st, "user") else None
+        # Get current user info
+        # Note: st.user is available in recent Streamlit versions
+        user_email = None
+        if hasattr(st, "user"):
+            user_email = st.user.email
+            
+        # If we have an email, it must be in the whitelist
+        if user_email:
+            return user_email in admin_emails
+            
+        # If no email is available (user not logged in)
+        # We must check if we are on Streamlit Cloud or Local
+        # Streamlit Cloud sets STREAMLIT_SERVER_ADDRESS
+        is_on_cloud = os.environ.get("STREAMLIT_SERVER_ADDRESS") is not None or \
+                      os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud"
         
-        # For local development, allow admin access if secrets exist
-        if user_email is None:
-            # Local dev mode - check if running locally
-            return len(admin_emails) > 0
-        
-        # Check if user email is in whitelist
-        return user_email in admin_emails
+        if is_on_cloud:
+            # On Cloud, if not logged in, deny access
+            return False
+            
+        # For local development (where st.user.email is always None)
+        # allow access if admin_emails is configured locally in secrets.toml
+        return True
     except Exception as e:
-        # If secrets not configured, deny access
+        # If any error (like secrets missing), deny access
         return False
 
 is_admin = is_admin_user()
+
 
 
 # Title and description
