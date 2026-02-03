@@ -99,7 +99,14 @@ def render_file_browser():
     
     st.success(f"📁 {len(cloud_files)} file(s) available")
     
-    for filename, file_info in cloud_files.items():
+    # Sort files by timestamp in reverse order (newest first)
+    sorted_files = sorted(
+        cloud_files.items(),
+        key=lambda x: x[1].get("uploaded_at", ""),
+        reverse=True
+    )
+    
+    for filename, file_info in sorted_files:
         with st.expander(f"📄 {filename}", expanded=False):
             col1, col2, col3 = st.columns(3)
             with col1:
