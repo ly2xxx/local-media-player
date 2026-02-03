@@ -1,131 +1,72 @@
 # API Usage Guide
 
-## Starting the API Server
+The Local Media Player supports programmatic file uploads and management through **query parameter-based API endpoints**. This approach works seamlessly on Streamlit Community Cloud since all endpoints share the same port.
 
-The REST API allows programmatic file uploads, perfect for AI automation and browser tools.
+## 🔗 Base URL
 
-### Start the API (runs on port 5000):
-```bash
-python api.py
+```
+# Local development
+http://localhost:8501
+
+# Streamlit Cloud
+https://your-app.streamlit.app
 ```
 
-### Start Streamlit app (runs on port 8501):
-```bash
-streamlit run app.py
-```
+## 📋 API Endpoints
 
-Run both simultaneously for full functionality!
-
----
-
-## API Endpoints
+All API endpoints are accessed via the `?api=<action>` query parameter.
 
 ### 1. Health Check
-**GET** `/health`
 
-Check if the API is running.
+Check if the server is running.
+
+**Request:**
+```bash
+GET /?api=health
+```
 
 **Response:**
 ```json
 {
   "status": "ok",
-  "message": "Local Media Player API is running"
+  "timestamp": "2026-02-03T12:00:00.000000",
+  "upload_dir": "/path/to/cloud_uploads"
 }
 ```
 
 **Example:**
 ```bash
-curl http://localhost:5000/health
+curl "http://localhost:8501/?api=health"
 ```
 
 ---
 
-### 2. Upload File
-**POST** `/upload`
+### 2. List Files
 
-Upload a media file to the cloud_uploads directory.
+Get a list of all uploaded files.
 
 **Request:**
-- Content-Type: `multipart/form-data`
-- Body: `file` (the file to upload)
-
-**Response (Success):**
-```json
-{
-  "success": true,
-  "filename": "video.mp4",
-  "size": 15728640,
-  "size_mb": 15.0,
-  "path": "/path/to/cloud_uploads/video.mp4",
-  "uploaded_at": "2026-02-03T07:45:00.123456"
-}
-```
-
-**Response (Error):**
-```json
-{
-  "success": false,
-  "error": "Unsupported file type: .exe"
-}
-```
-
-**Example (curl):**
 ```bash
-curl -X POST http://localhost:5000/upload \
-  -F "file=@/path/to/video.mp4"
+GET /?api=list
 ```
-
-**Example (Python):**
-```python
-import requests
-
-with open('video.mp4', 'rb') as f:
-    response = requests.post(
-        'http://localhost:5000/upload',
-        files={'file': f}
-    )
-    print(response.json())
-```
-
-**Example (JavaScript/Fetch):**
-```javascript
-const formData = new FormData();
-formData.append('file', fileInput.files[0]);
-
-fetch('http://localhost:5000/upload', {
-    method: 'POST',
-    body: formData
-})
-.then(response => response.json())
-.then(data => console.log(data));
-```
-
----
-
-### 3. List Files
-**GET** `/list`
-
-List all uploaded files.
 
 **Response:**
 ```json
 {
-  "success": true,
+  "status": "ok",
   "count": 2,
   "files": [
     {
-      "filename": "video.mp4",
+      "name": "video.mp4",
       "size": 15728640,
-      "size_mb": 15.0,
-      "uploaded_at": "2026-02-03T07:45:00.123456",
-      "type": ".mp4"
+      "uploaded_at": "2026-02-03T12:00:00.000000",
+      "path": "/path/to/cloud_uploads/video.mp4"
     },
     {
-      "filename": "audio.mp3",
+      "name": "audio.mp3",
       "size": 5242880,
-      "size_mb": 5.0,
-      "uploaded_at": "2026-02-03T07:46:00.123456",
-      "type": ".mp3"
+      "uploaded_at": "2026-02-03T11:30:00.000000",
+      "path": "/path/to/cloud_uploads/audio.mp3"
     }
   ]
 }
@@ -133,123 +74,258 @@ List all uploaded files.
 
 **Example:**
 ```bash
-curl http://localhost:5000/list
+curl "http://localhost:8501/?api=list"
 ```
 
 ---
 
-### 4. Delete File
-**DELETE** `/delete/<filename>`
+### 3. Delete File
 
-Delete a specific file.
+Delete a specific file by name.
+
+**Request:**
+```bash
+GET /?api=delete&filename=video.mp4
+```
+
+**Parameters:**
+- `filename` (required): Name of the file to delete
 
 **Response (Success):**
 ```json
 {
-  "success": true,
-  "message": "File deleted: video.mp4"
+  "status": "ok",
+  "message": "Deleted video.mp4"
 }
 ```
 
-**Response (Not Found):**
+**Response (Error):**
 ```json
 {
-  "success": false,
-  "error": "File not found: video.mp4"
+  "status": "error",
+  "message": "File not found"
 }
 ```
 
 **Example:**
 ```bash
-curl -X DELETE http://localhost:5000/delete/video.mp4
+curl "http://localhost:8501/?api=delete&filename=video.mp4"
 ```
 
 ---
 
-## AI/Browser Automation Usage
+### 4. Upload File
 
-### Using with Clawdbot Browser Tool
+Upload files programmatically using browser automation.
 
-The browser tool can now interact with the file uploader or use the API directly:
-
-**Option 1: Use Browser Upload Action**
-```python
-# Upload via browser automation
-browser(
-    action="upload",
-    targetId="media_file_uploader",  # Widget key
-    paths=["C:/Users/vl/Videos/movie.mp4"]
-)
-```
-
-**Option 2: Use REST API (Recommended)**
+**Request:**
 ```bash
-# Direct API upload (faster, no UI needed)
-curl -X POST http://localhost:5000/upload \
-  -F "file=@C:/Users/vl/Videos/movie.mp4"
+GET /?api=upload
 ```
 
-### Using with Python Scripts
+**Response:**
+Returns instructions for uploading files.
 
+**Methods:**
+
+#### Method 1: Browser Automation (Recommended)
+
+Use Playwright, Selenium, or similar tools to interact with the file uploader widget.
+
+**Playwright Example:**
 ```python
-import requests
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=False)
+    page = browser.new_page()
+    
+    # Navigate to the app
+    page.goto("http://localhost:8501")
+    
+    # Wait for the file uploader to be available
+    page.wait_for_selector('input[data-testid="stFileUploader"]')
+    
+    # Upload file
+    page.set_input_files(
+        'input[data-testid="stFileUploader"]',
+        'path/to/your/video.mp4'
+    )
+    
+    # Wait for upload to complete
+    page.wait_for_timeout(2000)
+    
+    browser.close()
+```
+
+**Selenium Example:**
+```python
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+driver = webdriver.Chrome()
+driver.get("http://localhost:8501")
+
+# Wait for file uploader
+file_input = WebDriverWait(driver, 10).until(
+    EC.presence_of_element_located((By.CSS_SELECTOR, 'input[type="file"]'))
+)
+
+# Upload file
+file_input.send_keys("/absolute/path/to/video.mp4")
+
+# Wait for processing
+time.sleep(2)
+
+driver.quit()
+```
+
+#### Method 2: Direct File Copy
+
+Directly copy files to the upload directory (for local development or server access).
+
+```bash
+# Copy file to upload directory
+cp video.mp4 cloud_uploads/
+
+# The file will be automatically detected on next page load
+```
+
+**Python Example:**
+```python
+import shutil
 from pathlib import Path
 
-def upload_media(file_path):
-    """Upload a media file via API."""
-    url = "http://localhost:5000/upload"
-    
-    with open(file_path, 'rb') as f:
-        files = {'file': f}
-        response = requests.post(url, files=files)
-    
-    if response.json().get('success'):
-        print(f"✅ Uploaded: {file_path}")
-        return response.json()
-    else:
-        print(f"❌ Failed: {response.json().get('error')}")
-        return None
+source_file = Path("video.mp4")
+upload_dir = Path("cloud_uploads")
+upload_dir.mkdir(exist_ok=True)
 
-# Upload a file
-upload_media("C:/Users/vl/Videos/movie.mp4")
+# Copy file to upload directory
+shutil.copy(source_file, upload_dir / source_file.name)
 ```
 
 ---
 
-## Supported File Types
+## 🤖 Complete Automation Example
 
-- **Video:** `.mp4`, `.webm`, `.ogg`, `.mov`, `.avi`
-- **Audio:** `.mp3`, `.wav`, `.m4a`, `.flac`
-- **Images:** `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.webp`
-- **Documents:** `.pdf`, `.md`, `.txt`
+Here's a complete example that uploads a file and verifies it:
+
+```python
+from playwright.sync_api import sync_playwright
+import requests
+import time
+
+BASE_URL = "http://localhost:8501"
+
+def upload_file(file_path):
+    """Upload a file using browser automation."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        
+        # Navigate to app
+        page.goto(BASE_URL)
+        
+        # Wait for file uploader
+        page.wait_for_selector('input[data-testid="stFileUploader"]')
+        
+        # Upload file
+        page.set_input_files(
+            'input[data-testid="stFileUploader"]',
+            file_path
+        )
+        
+        # Wait for upload
+        time.sleep(3)
+        
+        browser.close()
+
+def list_files():
+    """List all uploaded files."""
+    response = requests.get(f"{BASE_URL}/?api=list")
+    return response.json()
+
+def delete_file(filename):
+    """Delete a specific file."""
+    response = requests.get(f"{BASE_URL}/?api=delete&filename={filename}")
+    return response.json()
+
+# Usage
+if __name__ == "__main__":
+    # Upload a file
+    print("Uploading file...")
+    upload_file("video.mp4")
+    
+    # List files
+    print("\nListed files:")
+    files = list_files()
+    print(files)
+    
+    # Delete a file
+    print("\nDeleting file...")
+    result = delete_file("video.mp4")
+    print(result)
+```
 
 ---
 
-## Security Notes
+## 🔐 Security Notes
 
-⚠️ **Important:** This API has no authentication. It's designed for local development only.
-
-**For production:**
-- Add authentication (API keys, OAuth)
-- Add rate limiting
-- Validate file sizes
-- Implement virus scanning
-- Use HTTPS
+1. **API Access:** All API endpoints are publicly accessible. For production, implement authentication.
+2. **File Size Limits:** Streamlit has file upload size limits (default 200MB).
+3. **Admin Features:** Use `?admin=YOUR_SECRET_TOKEN` for admin file browser access.
 
 ---
 
-## Troubleshooting
+## 🚀 Streamlit Cloud Deployment
 
-**API won't start:**
-- Check if port 5000 is already in use
-- Verify Flask is installed: `pip install flask flask-cors`
+This API approach works perfectly on Streamlit Community Cloud because:
+- All endpoints use the same port (Streamlit's port)
+- No need for separate Flask/FastAPI servers
+- Query parameters work out of the box
+- Browser automation can target the deployed URL
 
-**Files not appearing in Streamlit:**
-- Refresh the Streamlit app (press R in browser)
-- Files are stored in `cloud_uploads/` directory
-- Check file permissions
+**Example with deployed app:**
+```python
+BASE_URL = "https://your-app.streamlit.app"
 
-**Upload fails:**
-- Verify file type is supported
-- Check disk space
-- Ensure `cloud_uploads/` directory exists and is writable
+# All endpoints work the same way
+requests.get(f"{BASE_URL}/?api=health")
+requests.get(f"{BASE_URL}/?api=list")
+```
+
+---
+
+## 📝 Error Handling
+
+All endpoints return JSON with a `status` field:
+
+**Success:**
+```json
+{
+  "status": "ok",
+  ...
+}
+```
+
+**Error:**
+```json
+{
+  "status": "error",
+  "message": "Error description"
+}
+```
+
+Handle errors appropriately in your automation scripts:
+
+```python
+response = requests.get(f"{BASE_URL}/?api=list")
+data = response.json()
+
+if data["status"] == "error":
+    print(f"Error: {data['message']}")
+else:
+    print(f"Success! Found {data['count']} files")
+```
