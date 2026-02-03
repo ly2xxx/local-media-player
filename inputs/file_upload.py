@@ -59,7 +59,8 @@ class FileUploadInput(MediaInputHandler):
             "Choose media files",
             type=[ext[1:] for ext in self.ALL_SUPPORTED],  # Remove the dot
             accept_multiple_files=True,
-            help="Upload video, audio, or image files"
+            help="Upload video, audio, or image files",
+            key="media_file_uploader"  # Add explicit key for browser automation
         )
         
         # Save uploaded files to cloud storage

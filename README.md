@@ -10,6 +10,7 @@ A simple and elegant Streamlit web application for playing local media files dir
 - **File Information**: View file name, size, and type at a glance
 - **Download Option**: Download any uploaded file directly from the player
 - **Responsive Design**: Clean, modern interface that works on desktop and mobile
+- **🤖 Built-in API**: Query parameter-based endpoints for automation and browser tools (works on Streamlit Cloud) - see [API_USAGE.md](API_USAGE.md)
 
 ## 📸 Screenshots
 
@@ -48,6 +49,23 @@ streamlit run app.py
 ```
 
 4. Open your browser and navigate to `http://localhost:8501`
+
+### API Endpoints (for programmatic access)
+
+The app includes built-in API endpoints for automation (no separate server needed):
+
+```bash
+# Health check
+curl "http://localhost:8501/?api=health"
+
+# List files
+curl "http://localhost:8501/?api=list"
+
+# Delete file
+curl "http://localhost:8501/?api=delete&filename=video.mp4"
+```
+
+See [API_USAGE.md](API_USAGE.md) for full documentation and browser automation examples.
 
 ## 📖 Usage
 

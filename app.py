@@ -1,6 +1,99 @@
 import streamlit as st
 from pathlib import Path
 from inputs import FileUploadInput, LocalDirectoryInput, WebMediaInput
+import json
+import os
+from datetime import datetime
+
+# ==========================================
+# API ENDPOINTS via Query Parameters
+# ==========================================
+# Handle API requests before rendering any UI
+# Usage: ?api=upload, ?api=list, ?api=delete, ?api=health
+
+CLOUD_UPLOADS_DIR = Path(__file__).parent / "cloud_uploads"
+CLOUD_UPLOADS_DIR.mkdir(exist_ok=True)
+
+api_action = st.query_params.get("api")
+
+if api_action:
+    # API mode - return JSON responses
+    
+    if api_action == "health":
+        # Health check endpoint
+        st.json({
+            "status": "ok",
+            "timestamp": datetime.now().isoformat(),
+            "upload_dir": str(CLOUD_UPLOADS_DIR)
+        })
+        st.stop()
+    
+    elif api_action == "list":
+        # List all uploaded files
+        files = []
+        if CLOUD_UPLOADS_DIR.exists():
+            for file_path in CLOUD_UPLOADS_DIR.iterdir():
+                if file_path.is_file():
+                    stat = file_path.stat()
+                    files.append({
+                        "name": file_path.name,
+                        "size": stat.st_size,
+                        "uploaded_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                        "path": str(file_path)
+                    })
+        
+        st.json({
+            "status": "ok",
+            "count": len(files),
+            "files": files
+        })
+        st.stop()
+    
+    elif api_action == "delete":
+        # Delete a file
+        filename = st.query_params.get("filename")
+        if not filename:
+            st.json({"status": "error", "message": "filename parameter required"})
+            st.stop()
+        
+        file_path = CLOUD_UPLOADS_DIR / filename
+        if file_path.exists() and file_path.is_file():
+            file_path.unlink()
+            st.json({"status": "ok", "message": f"Deleted {filename}"})
+        else:
+            st.json({"status": "error", "message": "File not found"})
+        st.stop()
+    
+    elif api_action == "upload":
+        # Upload endpoint - show instructions
+        st.markdown("### 📤 File Upload API")
+        st.markdown("""
+        To upload files programmatically:
+        
+        1. **Via Browser Automation:**
+           - Navigate to the main page (without `?api=upload`)
+           - Use the file uploader widget with key: `media_file_uploader`
+           - Files are automatically saved to `cloud_uploads/`
+        
+        2. **Direct File Access:**
+           - Copy files to: `{}`
+           - Files will be auto-detected on next page load
+        
+        **Example (Playwright):**
+        ```python
+        page.goto("http://localhost:8501")
+        page.set_input_files('input[data-testid="stFileUploader"]', 'video.mp4')
+        ```
+        """.format(CLOUD_UPLOADS_DIR))
+        st.stop()
+    
+    else:
+        st.json({"status": "error", "message": f"Unknown API action: {api_action}"})
+        st.stop()
+
+# ==========================================
+# NORMAL STREAMLIT APP (No API mode)
+# ==========================================
 
 # Page configuration
 st.set_page_config(
@@ -8,8 +101,6 @@ st.set_page_config(
     page_icon="🎬",
     layout="wide"
 )
-
-import os
 
 # Check for admin access using secret token
 def is_admin_user():
@@ -40,11 +131,6 @@ def is_admin_user():
         return False
 
 is_admin = is_admin_user()
-
-
-
-
-
 
 # Title and description
 st.title("🎬 Local Media Player")
@@ -99,7 +185,14 @@ def render_file_browser():
     
     st.success(f"📁 {len(cloud_files)} file(s) available")
     
-    for filename, file_info in cloud_files.items():
+    # Sort files by timestamp in REVERSE order (newest first)
+    sorted_files = sorted(
+        cloud_files.items(),
+        key=lambda x: x[1].get("uploaded_at", ""),
+        reverse=True
+    )
+    
+    for filename, file_info in sorted_files:
         with st.expander(f"📄 {filename}", expanded=False):
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -170,4 +263,3 @@ st.markdown(
     "</div>",
     unsafe_allow_html=True
 )
-
