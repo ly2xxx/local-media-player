@@ -10,6 +10,56 @@ st.set_page_config(
 )
 
 import os
+import json
+
+# Directory for cloud uploads
+CLOUD_UPLOADS_DIR = Path(__file__).parent / "cloud_uploads"
+CLOUD_UPLOADS_DIR.mkdir(exist_ok=True)
+
+# Handle API requests via query parameters
+api_action = st.query_params.get("api")
+
+if api_action == "delete":
+    # Admin-only delete file API endpoint
+    filename = st.query_params.get("filename")
+    admin_token = st.query_params.get("admin", "")
+    
+    # Verify admin access
+    try:
+        required_token = st.secrets.get("ADMIN_TOKEN", "")
+        if not required_token or admin_token != required_token:
+            st.json({"status": "error", "message": "Unauthorized: Invalid or missing admin token"})
+            st.stop()
+    except Exception:
+        st.json({"status": "error", "message": "Unauthorized: Admin token not configured"})
+        st.stop()
+    
+    if not filename:
+        st.json({"status": "error", "message": "Missing required parameter: filename"})
+        st.stop()
+    
+    # Delete the file
+    file_path = CLOUD_UPLOADS_DIR / filename
+    
+    if file_path.exists() and file_path.is_file():
+        try:
+            file_path.unlink()
+            st.json({
+                "status": "success",
+                "message": f"File '{filename}' deleted successfully"
+            })
+        except Exception as e:
+            st.json({
+                "status": "error",
+                "message": f"Failed to delete file: {str(e)}"
+            })
+    else:
+        st.json({
+            "status": "error",
+            "message": f"File '{filename}' not found"
+        })
+    
+    st.stop()
 
 # Check for admin access using secret token
 def is_admin_user():
@@ -133,14 +183,28 @@ def render_file_browser():
                 elif file_ext in ['.mp3', '.wav', '.m4a', '.flac']:
                     st.audio(str(file_path))
                 
-                # Download button
-                with open(file_path, "rb") as f:
-                    st.download_button(
-                        label="⬇️ Download",
-                        data=f.read(),
-                        file_name=filename,
-                        use_container_width=True
-                    )
+                # Download and Delete buttons
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    with open(file_path, "rb") as f:
+                        st.download_button(
+                            label="⬇️ Download",
+                            data=f.read(),
+                            file_name=filename,
+                            use_container_width=True
+                        )
+                with col_btn2:
+                    if st.button("🗑️ Delete", key=f"delete_{filename}", use_container_width=True):
+                        # Delete the file
+                        try:
+                            file_path.unlink()
+                            # Remove from session state
+                            if filename in st.session_state.cloud_files:
+                                del st.session_state.cloud_files[filename]
+                            st.success(f"Deleted {filename}")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Failed to delete: {str(e)}")
 
 
 # Main content area
